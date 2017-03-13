@@ -4,6 +4,7 @@ from flask import Flask, Response, jsonify, render_template, request
 import gevent
 from gevent.wsgi import WSGIServer
 from gevent.queue import Queue
+from urllib import unquote
 
 app = Flask(__name__)
 subscriptions = []
@@ -31,14 +32,15 @@ class ServerSentEvent(object):
     def encode(self):
         if not self.data:
             return ""
-        lines = ["%s: %s" % (v, k) 
+        lines = ["%s: %s" % (v, k)
                  for k, v in self.desc_map.iteritems() if k]
-        
+
         return "%s\n\n" % "\n".join(lines)
 
 @app.route("/publish/epoch/end/", methods=['POST'])
 def publish():
-    payload = request.form.get('data')
+    #payload = request.form.get('data')
+    payload = unquote(request.data.split('=')[1]).replace('+','')
     try:
         data = json.loads(payload)
     except:
@@ -48,7 +50,7 @@ def publish():
         msg = str(time.time())
         for sub in subscriptions[:]:
             sub.put(payload)
-    
+
     gevent.spawn(notify)
     return "OK"
 
